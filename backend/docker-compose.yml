@@ -1,0 +1,59 @@
+services:
+  rag-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      SECRET_KEY: ""
+      JWT_SECRET_KEY: ""
+      DATABASE_URL: postgresql://admin:d1ma385db123@localhost:5432/ragdb
+      OPENAI_API_KEY: ""
+      DEBUG: "true"
+      LOG_LEVEL: INFO
+    volumes:
+      - ./logs:/backend_corrige/backend/logs
+      - ./uploads:/backend_corrige/backend/uploads
+      - ./chroma_db:/backend_corrige/backend/chroma_db
+      - ./.env:/backend_corrige/backend/.env
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - rag-network
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ragdb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: d1ma385db123
+      # force initdb to use UTF-8 (only applies on first init)
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - rag-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - rag-network
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  rag-network:
+    driver: bridge
